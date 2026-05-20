@@ -83,7 +83,7 @@ Launch Gradio web interface for OCR tasks:
 
 ```bash
 pip install gradio
-openocr --task launch_openoce_demo --server_port 7862 --share
+openocr --task launch_openocr_demo --server_port 7862 --share
 ```
 
 ### Python API Usage
@@ -94,7 +94,7 @@ openocr --task launch_openoce_demo --server_port 7862 --share
 from openocr import OpenOCR
 
 # Initialize OCR engine
-ocr = OpenOCR(mode='mobile', backend=='onnx')
+ocr = OpenOCR(mode='mobile', backend='onnx')
 
 # Process single image
 results, time_dicts = ocr(
