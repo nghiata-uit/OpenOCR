@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 
 # Cấu hình đường dẫn
-RAW_IMG_DIR = "./vintext_raw/images/"
+RAW_IMG_DIR = "./vintext_raw/train_images/"
 RAW_LABEL_DIR = "./vintext_raw/labels/"
 OUT_IMG_DIR = "./vintext_svtrv2/images/"
 OUT_LABEL_FILE = "./vintext_svtrv2/rec_gt_train.txt"
