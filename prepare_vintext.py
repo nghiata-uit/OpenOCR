@@ -60,6 +60,11 @@ with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
             continue
 
         img_name = label_name.replace('.txt', '.jpg')
+        if img_name.startswith('gt_'):
+            img_name = img_name[3:]
+        elif img_name.startswith('res_'):
+            img_name = img_name[4:]
+            
         img_path = None
 
         # Quét qua 3 thư mục ảnh để tìm ảnh tương ứng với nhãn
