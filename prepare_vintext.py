@@ -2,17 +2,21 @@ import os
 import cv2
 import numpy as np
 
-# Cấu hình đường dẫn
-RAW_IMG_DIR = "./vintext_raw/train_images/"
+# 1. CẤU HÌNH ĐƯỜNG DẪN DỰA TRÊN CẤU TRÚC THỰC TẾ
 RAW_LABEL_DIR = "./vintext_raw/labels/"
+RAW_IMG_DIRS = [
+    "./vintext_raw/train_images/",
+    "./vintext_raw/test_image/",
+    "./vintext_raw/unseen_test_images/"
+]
 OUT_IMG_DIR = "./vintext_svtrv2/images/"
 OUT_LABEL_FILE = "./vintext_svtrv2/rec_gt_train.txt"
 
 os.makedirs(OUT_IMG_DIR, exist_ok=True)
 
 
+# 2. HÀM NẮN THẲNG ẢNH (PERSPECTIVE TRANSFORM)
 def order_points(pts):
-    # Khởi tạo danh sách tọa độ nắn thẳng [top-left, top-right, bottom-right, bottom-left]
     rect = np.zeros((4, 2), dtype="float32")
     s = pts.sum(axis=1)
     rect[0] = pts[np.argmin(s)]
@@ -27,7 +31,6 @@ def four_point_transform(image, pts):
     rect = order_points(pts)
     (tl, tr, br, bl) = rect
 
-    # Tính toán chiều rộng và chiều cao ảnh mới
     widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
     widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
     maxWidth = max(int(widthA), int(widthB))
@@ -47,32 +50,45 @@ def four_point_transform(image, pts):
     return warped
 
 
-print("Bắt đầu xử lý dữ liệu VinText...")
+# 3. TIẾN HÀNH XỬ LÝ
+print("Bắt đầu quét và cắt ảnh VinText...")
+processed_count = 0
+
 with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
     for label_name in os.listdir(RAW_LABEL_DIR):
-        img_name = label_name.replace('.txt', '.jpg')
-        img_path = os.path.join(RAW_IMG_DIR, img_name)
-        label_path = os.path.join(RAW_LABEL_DIR, label_name)
+        if not label_name.endswith('.txt'):
+            continue
 
-        if not os.path.exists(img_path):
+        img_name = label_name.replace('.txt', '.jpg')
+        img_path = None
+
+        # Quét qua 3 thư mục ảnh để tìm ảnh tương ứng với nhãn
+        for img_dir in RAW_IMG_DIRS:
+            temp_path = os.path.join(img_dir, img_name)
+            if os.path.exists(temp_path):
+                img_path = temp_path
+                break
+
+        # Nếu vẫn không thấy ảnh (bị thất lạc), bỏ qua file nhãn này
+        if img_path is None:
             continue
 
         img = cv2.imread(img_path)
         if img is None:
             continue
 
+        label_path = os.path.join(RAW_LABEL_DIR, label_name)
         with open(label_path, 'r', encoding='utf-8') as f_in:
             lines = f_in.readlines()
 
         for idx, line in enumerate(lines):
-            # VinText phân cách bằng dấu phẩy
             parts = line.strip().split(',')
             if len(parts) < 9:
                 continue
 
-            text = ",".join(parts[8:])  # Ghép lại nếu chữ có chứa dấu phẩy
+            text = ",".join(parts[8:])
 
-            # VinText dùng "###" để đánh dấu các chữ mờ không thể đọc được
+            # Bỏ qua các chữ bị mờ/không đọc được (được gán nhãn ###)
             if text == "###":
                 continue
 
@@ -83,20 +99,24 @@ with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
                 # Cắt và nắn thẳng ảnh
                 warped_img = four_point_transform(img, pts)
 
-                # Bỏ qua các ảnh quá nhỏ hoặc bị lỗi
-                if warped_img.shape[0] < 5 or warped_img.shape[1] < 5:
+                # Bỏ qua các ảnh quá bé (nhiễu)
+                if warped_img.shape[0] < 8 or warped_img.shape[1] < 8:
                     continue
 
                 crop_img_name = f"{img_name.split('.')[0]}_{idx}.jpg"
                 crop_img_path = os.path.join(OUT_IMG_DIR, crop_img_name)
 
+                # Lưu ảnh chữ đã cắt
                 cv2.imwrite(crop_img_path, warped_img)
 
-                # Ghi vào file chuẩn OpenOCR (dùng \t)
+                # Ghi vào file nhãn chuẩn OpenOCR
                 clean_text = text.replace('\n', '').replace('\t', ' ')
-                f_out.write(f"{crop_img_name}\t{clean_text}\n")
+                f_out.write(f"images/{crop_img_name}\t{clean_text}\n")
+                processed_count += 1
 
             except Exception as e:
                 pass  # Bỏ qua các dòng lỗi tọa độ
 
-print("Hoàn tất! Dữ liệu đã sẵn sàng cho SVTRv2.")
+print(f"✅ Hoàn tất! Đã tạo thành công {processed_count} ảnh chữ cắt (cropped images).")
+print(f"📁 Dữ liệu được lưu tại: {OUT_IMG_DIR}")
+print(f"📄 File nhãn được lưu tại: {OUT_LABEL_FILE}")
