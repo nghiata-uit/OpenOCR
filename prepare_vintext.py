@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 
 # ==========================================
-# 1. CẤU HÌNH VÀ KIỂM TRA ĐƯỜNG DẪN ĐẦU VÀO
+# 1. CẤU HÌNH ĐƯỜNG DẪN
 # ==========================================
 RAW_LABEL_DIR = "./vintext_raw/labels/"
 RAW_IMG_DIRS = [
@@ -15,11 +15,6 @@ OUT_IMG_DIR = "./vintext_svtrv2/images/"
 OUT_LABEL_FILE = "./vintext_svtrv2/rec_gt_train.txt"
 
 os.makedirs(OUT_IMG_DIR, exist_ok=True)
-
-# Kiểm tra cơ bản
-if not os.path.exists(RAW_LABEL_DIR):
-    print(f"❌ LỖI NGHIÊM TRỌNG: Không tìm thấy thư mục nhãn tại {RAW_LABEL_DIR}")
-    exit()
 
 
 # ==========================================
@@ -48,7 +43,6 @@ def four_point_transform(image, pts):
     heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
     maxHeight = max(int(heightA), int(heightB))
 
-    # Nếu tọa độ lỗi sinh ra kích thước 0, bỏ qua
     if maxWidth == 0 or maxHeight == 0:
         return None
 
@@ -64,7 +58,7 @@ def four_point_transform(image, pts):
 
 
 # ==========================================
-# 3. TIẾN HÀNH XỬ LÝ VÀ CHẨN ĐOÁN (DEBUGGING)
+# 3. TIẾN HÀNH XỬ LÝ VỚI TÌM KIẾM THÔNG MINH
 # ==========================================
 print("Bắt đầu quét và cắt ảnh VinText...")
 processed_count = 0
@@ -77,52 +71,57 @@ print(f"[*] Tìm thấy {len(label_files)} file nhãn gốc.")
 
 with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
     for label_name in label_files:
-        img_name = label_name.replace('.txt', '.jpg')
-        img_path = None
+        base_name = label_name.replace('.txt', '')
+        clean_name = base_name.replace('gt_', '')  # Bỏ tiền tố gt_
 
-        # Quét qua 3 thư mục ảnh để tìm ảnh
-        for img_dir in RAW_IMG_DIRS:
-            temp_path = os.path.join(img_dir, img_name)
-            if os.path.exists(temp_path):
-                img_path = temp_path
+        # Danh sách các khả năng tên file ảnh có thể xảy ra trong VinText
+        possible_img_names = [
+            f"{base_name}.jpg",  # Vd: gt_461.jpg (Nếu có)
+            f"{clean_name}.jpg",  # Vd: 461.jpg hoặc im0001.jpg (Phổ biến nhất)
+            f"im{clean_name.zfill(4)}.jpg",  # Vd: 461 -> im0461.jpg
+            f"{clean_name}.JPG"  # Đề phòng viết hoa đuôi file
+        ]
+
+        img_path = None
+        target_img_name = ""
+
+        # Quét qua 3 thư mục ảnh với từng khả năng tên file
+        for img_name_guess in possible_img_names:
+            for img_dir in RAW_IMG_DIRS:
+                temp_path = os.path.join(img_dir, img_name_guess)
+                if os.path.exists(temp_path):
+                    img_path = temp_path
+                    target_img_name = img_name_guess
+                    break
+            if img_path:  # Nếu tìm thấy, thoát vòng lặp tìm tên
                 break
 
-        # Lỗi 1: Không tìm thấy ảnh vật lý
         if img_path is None:
             error_no_img += 1
-            if error_no_img < 3:  # Chỉ in 3 lỗi đầu để tránh trôi log
-                print(f"⚠️ [Mất ảnh] Không tìm thấy ảnh nào tên: {img_name}")
             continue
 
-        # Lỗi 2: File ảnh có tồn tại nhưng OpenCV không đọc được (có thể do lỗi định dạng)
         img = cv2.imread(img_path)
         if img is None:
             error_cv2_read += 1
-            if error_cv2_read < 3:
-                print(f"⚠️ [Lỗi OpenCV] Không thể đọc được file: {img_path}")
             continue
 
         label_path = os.path.join(RAW_LABEL_DIR, label_name)
-        with open(label_path, 'r', encoding='utf-8-sig') as f_in:  # Xử lý luôn cả mã hóa UTF-8 BOM nếu có
+        with open(label_path, 'r', encoding='utf-8-sig') as f_in:
             lines = f_in.readlines()
 
         for idx, line in enumerate(lines):
-            # Cắt bỏ khoảng trắng dư thừa ở đầu và cuối trước khi split
             line = line.strip()
             if not line:
                 continue
 
             parts = line.split(',')
-
-            # Lỗi 3: Định dạng dòng không đủ 8 tọa độ + 1 text
             if len(parts) < 9:
                 error_parse += 1
                 continue
 
-            text = ",".join(parts[8:])
-            text = text.strip()  # Dọn dẹp lại khoảng trắng
+            text = ",".join(parts[8:]).strip()
 
-            if text == "###":
+            if text == "###":  # Bỏ qua chữ mờ
                 continue
 
             try:
@@ -132,36 +131,29 @@ with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
                 # Cắt và nắn thẳng ảnh
                 warped_img = four_point_transform(img, pts)
 
-                if warped_img is None:
+                if warped_img is None or warped_img.shape[0] < 8 or warped_img.shape[1] < 8:
                     continue
 
-                if warped_img.shape[0] < 8 or warped_img.shape[1] < 8:
-                    continue
-
-                crop_img_name = f"{img_name.split('.')[0]}_{idx}.jpg"
+                crop_img_name = f"{target_img_name.split('.')[0]}_{idx}.jpg"
                 crop_img_path = os.path.join(OUT_IMG_DIR, crop_img_name)
 
-                # Lưu ảnh
+                # Lưu ảnh và ghi nhãn
                 success = cv2.imwrite(crop_img_path, warped_img)
-
                 if success:
                     clean_text = text.replace('\n', '').replace('\t', ' ')
                     f_out.write(f"images/{crop_img_name}\t{clean_text}\n")
                     processed_count += 1
-                else:
-                    print(f"⚠️ Không thể lưu ảnh tại: {crop_img_path}")
 
             except Exception as e:
                 error_parse += 1
 
 print("\n" + "=" * 40)
-print("📊 BÁO CÁO KẾT QUẢ XỬ LÝ (DEBUG REPORT)")
+print("📊 BÁO CÁO KẾT QUẢ XỬ LÝ")
 print("=" * 40)
 print(f"✅ Số lượng ảnh chữ (cropped) tạo thành công : {processed_count}")
 print(f"❌ Số file nhãn bị bỏ qua do không thấy ảnh : {error_no_img}")
 print(f"❌ Số ảnh bị lỗi không thể đọc (OpenCV error) : {error_cv2_read}")
 print(f"❌ Số dòng nhãn bị lỗi định dạng (Parse error) : {error_parse}")
 
-if processed_count == 0:
-    print(
-        "\n🚨 KẾT LUẬN: Nguyên nhân chính nằm ở các chỉ số lỗi (❌) bên trên. Hãy kiểm tra lại thư mục giải nén VinText gốc.")
+if processed_count > 0:
+    print("\n🎉 CHÚC MỪNG! Dữ liệu VinText đã được chuyển đổi thành công. Bạn đã sẵn sàng để Fine-tune SVTRv2.")
