@@ -60,7 +60,7 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: ./vintext_svtrv2/images/
+    data_dir: ./vintext_svtrv2/
     label_file_list:
       - ./vintext_svtrv2/rec_gt_train.txt
     transforms:
@@ -85,7 +85,7 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./vintext_svtrv2/images/
+    data_dir: ./vintext_svtrv2/
     label_file_list:
       - ./vintext_svtrv2/rec_gt_test.txt  # SỬA LỖI: Trỏ vào tập Test để tránh Data Leakage
     transforms:
