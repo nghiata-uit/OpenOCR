@@ -284,6 +284,9 @@ class RecDynamicResize(object):
 
     def __call__(self, data):
         img = data['image']
+        import numpy as np
+        if not isinstance(img, np.ndarray):
+            img = np.array(img)
         imgH, imgW = self.image_shape
         h, w, imgC = img.shape
         ratio = w / float(h)
