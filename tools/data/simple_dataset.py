@@ -208,6 +208,9 @@ class MultiScaleDataSet(SimpleDataSet):
 
     def resize_norm_img(self, data, imgW, imgH, padding=True):
         img = data['image']
+        from PIL import Image
+        if isinstance(img, Image.Image):
+            img = np.array(img)
         h = img.shape[0]
         w = img.shape[1]
         if not padding:
