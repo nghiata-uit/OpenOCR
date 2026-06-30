@@ -60,9 +60,9 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: ../vintext_svtrv2/images/
+    data_dir: ./vintext_svtrv2/images/
     label_file_list:
-      - ../vintext_svtrv2/rec_gt_train.txt
+      - ./vintext_svtrv2/rec_gt_train.txt
     transforms:
       - DecodeImagePIL:
           img_mode: RGB
@@ -85,9 +85,9 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ../vintext_svtrv2/images/
+    data_dir: ./vintext_svtrv2/images/
     label_file_list:
-      - ../vintext_svtrv2/rec_gt_test.txt  # SỬA LỖI: Trỏ vào tập Test để tránh Data Leakage
+      - ./vintext_svtrv2/rec_gt_test.txt  # SỬA LỖI: Trỏ vào tập Test để tránh Data Leakage
     transforms:
       - DecodeImagePIL:  # SỬA LỖI: Đổi thành DecodeImagePIL để đồng bộ không gian RGB
           img_mode: RGB
