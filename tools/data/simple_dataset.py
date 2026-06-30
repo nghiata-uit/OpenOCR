@@ -51,6 +51,7 @@ class SimpleDataSet(Dataset):
         self.ext_op_transform_idx = dataset_config.get('ext_op_transform_idx',
                                                        2)
         self.need_reset = True in [x < 1 for x in ratio_list]
+        self.ds_width = dataset_config.get('ds_width', False)
 
     def set_epoch_as_seed(self, seed, dataset_config):
         if self.mode == 'train':
