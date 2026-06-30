@@ -9,7 +9,7 @@ Global:
   eval_batch_step: [0, 500]
   eval_epoch_step: [0, 1]
   cal_metric_during_train: True
-  pretrained_model:
+  pretrained_model: ./svtrv2_smtr_gtc_rctc/best.pth
   # ./output/rec/u14m_filter/svtrv2_rctc/best.pth
   checkpoints:
   use_tensorboard: false
@@ -84,7 +84,7 @@ Metric:
 
 Train:
   dataset:
-    name: SimpleDataSet
+    name: MultiScaleDataSet
     data_dir: ./vintext_svtrv2/
     label_file_list:
       - ./vintext_svtrv2/rec_gt_train.txt
@@ -119,7 +119,7 @@ Train:
 
 Eval:
   dataset:
-    name: SimpleDataSet
+    name: MultiScaleDataSet
     data_dir: ./vintext_svtrv2/
     label_file_list:
       - ./vintext_svtrv2/rec_gt_test.txt  # SỬA LỖI: Trỏ vào tập Test để tránh Data Leakage

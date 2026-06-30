@@ -186,8 +186,20 @@ class MultiScaleDataSet(SimpleDataSet):
         for lins in self.data_lines:
             data_line_new.append(lins)
             lins = lins.decode('utf-8')
-            name, label, w, h = lins.strip('\n').split(self.delimiter)
-            wh_ratio.append(float(w) / float(h))
+            parts = lins.strip('\n').split(self.delimiter)
+            if len(parts) >= 4:
+                name, label, w, h = parts[0], parts[1], parts[2], parts[3]
+                wh_ratio.append(float(w) / float(h))
+            else:
+                name, label = parts[0], parts[1]
+                try:
+                    from PIL import Image
+                    file_name = self._try_parse_filename_list(name)
+                    img_path = os.path.join(self.data_dir, file_name)
+                    w, h = Image.open(img_path).size
+                    wh_ratio.append(float(w) / float(h))
+                except Exception as e:
+                    wh_ratio.append(1.0)
 
         self.data_lines = data_line_new
         self.wh_ratio = np.array(wh_ratio)
