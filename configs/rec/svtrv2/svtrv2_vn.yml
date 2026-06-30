@@ -107,7 +107,7 @@ Train:
     name: RatioSampler
     scales: [[128, 32]] # w, h
     # divide_factor: to ensure the width and height dimensions can be devided by downsampling multiple
-    first_bs: &bs 128
+    first_bs: &bs 512
     fix_bs: false
     divided_factor: [4, 16] # w, h
     is_training: True
