@@ -8,7 +8,7 @@ Global:
   eval_epoch_step: [0, 1]
   eval_batch_step: [0, 2000]
   cal_metric_during_train: True
-  pretrained_model: ./openocr_repsvtr_ch.pth # Chắc chắn bạn đã tải đúng trọng số mobile này
+  pretrained_model: ./svtrv2_smtr_gtc_rctc/best.pth # Chắc chắn bạn đã tải đúng trọng số mobile này
   checkpoints:
   use_tensorboard: false
   infer_img:
