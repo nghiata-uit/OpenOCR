@@ -85,6 +85,7 @@ Metric:
 Train:
   dataset:
     name: MultiScaleDataSet
+    ds_width: True
     data_dir: ./vintext_svtrv2/
     label_file_list:
       - ./vintext_svtrv2/rec_gt_train.txt
@@ -120,6 +121,7 @@ Train:
 Eval:
   dataset:
     name: MultiScaleDataSet
+    ds_width: True
     data_dir: ./vintext_svtrv2/
     label_file_list:
       - ./vintext_svtrv2/rec_gt_test.txt  # SỬA LỖI: Trỏ vào tập Test để tránh Data Leakage
