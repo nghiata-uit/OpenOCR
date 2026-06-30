@@ -290,8 +290,6 @@ class RecDynamicResize(object):
         imgH, imgW = self.image_shape
         h, w, imgC = img.shape
         ratio = w / float(h)
-        max_wh_ratio = max(ratio, self.max_ratio)
-        imgW = int(imgH * max_wh_ratio)
         if math.ceil(imgH * ratio) > imgW:
             resized_w = imgW
         else:
