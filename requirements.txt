@@ -1,6 +1,6 @@
 imgaug
 lmdb
-numpy
+numpy<2.0.0
 opencv-python
 pyclipper
 pyyaml

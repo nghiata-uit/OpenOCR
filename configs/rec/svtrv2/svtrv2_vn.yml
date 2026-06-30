@@ -4,7 +4,7 @@ Global:
   log_smooth_window: 20
   print_batch_step: 10
   output_dir: ./output/rec/vn/svtrv2_vn/
-  save_epoch_step: 10  # SỬA LỖI: Lưu mô hình checkpoint mỗi 10 epoch
+  save_epoch_step: [1, 10]  # SỬA LỖI: Lưu mô hình checkpoint mỗi 10 epoch
   eval_epoch_step: [0, 1]
   eval_batch_step: [0, 2000]
   cal_metric_during_train: True
