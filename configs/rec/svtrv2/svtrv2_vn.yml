@@ -116,7 +116,7 @@ Train:
     batch_size_per_card: *bs
     drop_last: True
     max_ratio: &max_ratio 12
-    num_workers: 4
+    num_workers: 0
 
 Eval:
   dataset:
@@ -149,4 +149,4 @@ Eval:
     drop_last: False
     batch_size_per_card: *bs
     max_ratio: *max_ratio
-    num_workers: 4
+    num_workers: 0
