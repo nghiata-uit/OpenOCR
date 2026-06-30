@@ -174,8 +174,8 @@ class SimpleDataSet(Dataset):
 
 class MultiScaleDataSet(SimpleDataSet):
 
-    def __init__(self, config, mode, logger, seed=None):
-        super(MultiScaleDataSet, self).__init__(config, mode, logger, seed)
+    def __init__(self, config, mode, logger, seed=None, epoch=0, task='rec'):
+        super(MultiScaleDataSet, self).__init__(config, mode, logger, seed, epoch, task)
         self.ds_width = config[mode]['dataset'].get('ds_width', False)
         if self.ds_width:
             self.wh_aware()
