@@ -58,10 +58,13 @@ def four_point_transform(image, pts):
 
 
 # ==========================================
-# 3. TIẾN HÀNH XỬ LÝ VỚI TÌM KIẾM THÔNG MINH
+# 3. TIẾN HÀNH XỬ LÝ VỚI TÌM KIẾM THÔNG MINH VÀ PHÂN TÁCH TRAIN/TEST
 # ==========================================
+import unicodedata
+
 print("Bắt đầu quét và cắt ảnh VinText...")
-processed_count = 0
+processed_train_count = 0
+processed_test_count = 0
 error_no_img = 0
 error_cv2_read = 0
 error_parse = 0
@@ -69,7 +72,11 @@ error_parse = 0
 label_files = [f for f in os.listdir(RAW_LABEL_DIR) if f.endswith('.txt')]
 print(f"[*] Tìm thấy {len(label_files)} file nhãn gốc.")
 
-with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
+OUT_LABEL_TEST_FILE = "./vintext_svtrv2/rec_gt_test.txt"
+
+with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out_train, \
+     open(OUT_LABEL_TEST_FILE, 'w', encoding='utf-8') as f_out_test:
+    
     for label_name in label_files:
         base_name = label_name.replace('.txt', '')
         clean_name = base_name.replace('gt_', '')  # Bỏ tiền tố gt_
@@ -84,6 +91,7 @@ with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
 
         img_path = None
         target_img_name = ""
+        is_train = True
 
         # Quét qua 3 thư mục ảnh với từng khả năng tên file
         for img_name_guess in possible_img_names:
@@ -92,6 +100,9 @@ with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
                 if os.path.exists(temp_path):
                     img_path = temp_path
                     target_img_name = img_name_guess
+                    # Xác định ảnh thuộc tập train hay test dựa vào tên thư mục
+                    if "test" in img_dir.lower():
+                        is_train = False
                     break
             if img_path:  # Nếu tìm thấy, thoát vòng lặp tìm tên
                 break
@@ -133,6 +144,10 @@ with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
 
                 if warped_img is None or warped_img.shape[0] < 8 or warped_img.shape[1] < 8:
                     continue
+                
+                # Nếu ảnh dọc (height > width * 1.5), xoay nó lại để phù hợp mô hình OCR ngang
+                if warped_img.shape[0] > warped_img.shape[1] * 1.5:
+                    warped_img = cv2.rotate(warped_img, cv2.ROTATE_90_CLOCKWISE)
 
                 crop_img_name = f"{target_img_name.split('.')[0]}_{idx}.jpg"
                 crop_img_path = os.path.join(OUT_IMG_DIR, crop_img_name)
@@ -140,9 +155,16 @@ with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
                 # Lưu ảnh và ghi nhãn
                 success = cv2.imwrite(crop_img_path, warped_img)
                 if success:
+                    # Tiêu chuẩn hóa chuỗi Unicode (NFC) để tránh lỗi font tiếng Việt khi huấn luyện
                     clean_text = text.replace('\n', '').replace('\t', ' ')
-                    f_out.write(f"images/{crop_img_name}\t{clean_text}\n")
-                    processed_count += 1
+                    clean_text = unicodedata.normalize('NFC', clean_text)
+                    
+                    if is_train:
+                        f_out_train.write(f"images/{crop_img_name}\t{clean_text}\n")
+                        processed_train_count += 1
+                    else:
+                        f_out_test.write(f"images/{crop_img_name}\t{clean_text}\n")
+                        processed_test_count += 1
 
             except Exception as e:
                 error_parse += 1
@@ -150,10 +172,12 @@ with open(OUT_LABEL_FILE, 'w', encoding='utf-8') as f_out:
 print("\n" + "=" * 40)
 print("📊 BÁO CÁO KẾT QUẢ XỬ LÝ")
 print("=" * 40)
-print(f"✅ Số lượng ảnh chữ (cropped) tạo thành công : {processed_count}")
+print(f"✅ Số lượng ảnh chữ (cropped) TRAIN tạo thành công : {processed_train_count}")
+print(f"✅ Số lượng ảnh chữ (cropped) TEST tạo thành công  : {processed_test_count}")
 print(f"❌ Số file nhãn bị bỏ qua do không thấy ảnh : {error_no_img}")
 print(f"❌ Số ảnh bị lỗi không thể đọc (OpenCV error) : {error_cv2_read}")
 print(f"❌ Số dòng nhãn bị lỗi định dạng (Parse error) : {error_parse}")
 
-if processed_count > 0:
-    print("\n🎉 CHÚC MỪNG! Dữ liệu VinText đã được chuyển đổi thành công. Bạn đã sẵn sàng để Fine-tune SVTRv2.")
+if processed_train_count > 0 or processed_test_count > 0:
+    print("\n🎉 CHÚC MỪNG! Dữ liệu VinText đã được chuyển đổi thành công.")
+    print("📌 Hãy chắc chắn cấu hình Train trỏ tới 'rec_gt_train.txt' và Eval trỏ tới 'rec_gt_test.txt'.")
