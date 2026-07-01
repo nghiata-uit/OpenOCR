@@ -273,6 +273,10 @@ class OpenRecognizer:
         algorithm_name = self.cfg['Architecture']['algorithm']
         if algorithm_name in ['SVTRv2_mobile', 'SVTRv2_server']:
             self.cfg['Global']['character_dict_path'] = DEFAULT_DICT_PATH_REC
+        
+        if self.cfg['PostProcess'].get('name') == 'GTCLabelDecode':
+            self.cfg['PostProcess']['only_gtc'] = True
+
         self.post_process_class = build_post_process(self.cfg['PostProcess'],
                                                      self.cfg['Global'])
         char_num = self.post_process_class.get_character_num()
