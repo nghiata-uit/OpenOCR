@@ -31,7 +31,10 @@ class RecMetricLong(object):
         return text.lower()
 
     def __call__(self, pred_label, *args, **kwargs):
-        preds, labels = pred_label
+        if isinstance(pred_label, list) and len(pred_label) == 2 and isinstance(pred_label[0], tuple):
+            preds, labels = pred_label[0]
+        else:
+            preds, labels = pred_label
         correct_num = 0
         correct_num_slice = 0
         f_l_acc = 0
