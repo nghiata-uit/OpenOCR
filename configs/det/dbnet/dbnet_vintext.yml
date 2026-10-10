@@ -40,7 +40,7 @@ Loss:
 
 Optimizer:
   name: Adam
-  lr: 0.001
+  lr: 0.0001
   weight_decay: 5.0e-05
   filter_bias_and_bn: False
 
