@@ -77,12 +77,29 @@ def prepare_detection_labels():
                 
                 try:
                     coords = list(map(int, parts[:8]))
-                    points = [
-                        [coords[0], coords[1]],
-                        [coords[2], coords[3]],
-                        [coords[4], coords[5]],
-                        [coords[6], coords[7]]
-                    ]
+                    pts = np.array(coords, dtype=np.float32).reshape(4, 2)
+                    
+                    # Sắp xếp lại thứ tự các đỉnh để tránh đa giác bị xoắn (self-intersecting)
+                    import numpy as np
+                    import cv2
+                    def order_points(pts):
+                        rect = np.zeros((4, 2), dtype="float32")
+                        s = pts.sum(axis=1)
+                        rect[0] = pts[np.argmin(s)]
+                        rect[2] = pts[np.argmax(s)]
+                        diff = np.diff(pts, axis=1)
+                        rect[1] = pts[np.argmin(diff)]
+                        rect[3] = pts[np.argmax(diff)]
+                        return rect
+                    
+                    pts = order_points(pts)
+                    
+                    # Loại bỏ các đa giác quá nhỏ hoặc bị bóp méo thành đường thẳng
+                    area = cv2.contourArea(pts)
+                    if area < 10:
+                        continue
+                        
+                    points = pts.astype(int).tolist()
                     
                     # Nếu text là ### (chữ mờ), DBNet sẽ tự động phớt lờ nó (ignore)
                     clean_text = text.replace('\n', '').replace('\t', ' ')
