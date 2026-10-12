@@ -97,23 +97,44 @@ def main():
         det_res = det_model(img_path=img_file)[0]
         boxes = det_res.get("boxes", [])
 
-        if len(boxes) > 0:
-            # Chọn box có diện tích lớn nhất trong ảnh cắt sẵn
-            best_box = max(boxes, key=lambda b: cv2.contourArea(np.array(b, dtype=np.float32)))
-            crop_img = four_point_transform(orig_img, best_box, pad=args.pad)
+        if len(boxes) == 0:
+            # Nếu DBNet không tìm thấy box con (ảnh đã cắt khít chữ), dùng trực tiếp ảnh gốc có viền đệm
+            crop_img = cv2.copyMakeBorder(orig_img, args.pad, args.pad, args.pad, args.pad, cv2.BORDER_REPLICATE)
+            from PIL import Image
+            crop_pil = Image.fromarray(cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB))
+            rec_res = rec_model(img_numpy=crop_pil)[0]
+            text = rec_res["text"]
+            score = rec_res["score"]
+        elif len(boxes) == 1:
+            # 1 khung chữ (ảnh 1 từ)
+            crop_img = four_point_transform(orig_img, boxes[0], pad=args.pad)
             if crop_img is None:
                 crop_img = cv2.copyMakeBorder(orig_img, args.pad, args.pad, args.pad, args.pad, cv2.BORDER_REPLICATE)
+            from PIL import Image
+            crop_pil = Image.fromarray(cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB))
+            rec_res = rec_model(img_numpy=crop_pil)[0]
+            text = rec_res["text"]
+            score = rec_res["score"]
         else:
-            # Nếu DBNet không tìm thấy (do ảnh đã quá khít chữ), dùng trực tiếp ảnh gốc có viền đệm
-            crop_img = cv2.copyMakeBorder(orig_img, args.pad, args.pad, args.pad, args.pad, cv2.BORDER_REPLICATE)
-
-        # Chạy SVTRv2 nhận dạng
-        rec_res = rec_model(img_numpy=crop_img)[0]
-        text = rec_res["text"]
-        score = rec_res["score"]
+            # Nhiều khung chữ: sắp xếp theo thứ tự đọc tự nhiên (trên xuống dưới, trái sang phải)
+            sorted_boxes = sorted(boxes, key=lambda b: (np.mean(np.array(b)[:, 1]) // 25, np.mean(np.array(b)[:, 0])))
+            texts = []
+            scores = []
+            for box in sorted_boxes:
+                crop_sub = four_point_transform(orig_img, box, pad=args.pad)
+                if crop_sub is not None:
+                    from PIL import Image
+                    crop_pil = Image.fromarray(cv2.cvtColor(crop_sub, cv2.COLOR_BGR2RGB))
+                    rec_res = rec_model(img_numpy=crop_pil)[0]
+                    word = rec_res["text"].strip()
+                    if word:
+                        texts.append(word)
+                        scores.append(rec_res["score"])
+            text = " ".join(texts)
+            score = float(np.mean(scores)) if scores else 0.0
 
         file_name = os.path.basename(img_file)
-        print(f"{idx + 1:<5} | {file_name:<25} | {text:<15} | {score * 100:6.2f}%")
+        print(f"{idx + 1:<5} | {file_name:<25} | {text:<20} | {score * 100:6.2f}%")
 
     print("=" * 65 + "\n")
 

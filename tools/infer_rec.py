@@ -131,10 +131,22 @@ class RatioRecTVReisze(object):
             T.Normalize(0.5, 0.5),
         ])
         self.transforms = T.Compose(transforms)
-        self.ceil = cfg['Eval']['dataset'].get('ceil', False),
+        self.ceil = cfg['Eval']['dataset'].get('ceil', False)
 
     def __call__(self, data):
         img = data['image']
+        if isinstance(img, np.ndarray):
+            from PIL import Image
+            import cv2
+            if len(img.shape) == 2:
+                img = Image.fromarray(img).convert('RGB')
+            elif len(img.shape) == 3:
+                if img.shape[2] == 3:
+                    img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+                else:
+                    img = Image.fromarray(img)
+            data['image'] = img
+
         imgH = self.base_h
         w, h = img.size
         if self.ceil:
@@ -272,7 +284,8 @@ class OpenRecognizer:
         # 构建预处理流程
         algorithm_name = self.cfg['Architecture']['algorithm']
         if algorithm_name in ['SVTRv2_mobile', 'SVTRv2_server']:
-            self.cfg['Global']['character_dict_path'] = DEFAULT_DICT_PATH_REC
+            if self.cfg['Global'].get('character_dict_path', None) is None:
+                self.cfg['Global']['character_dict_path'] = DEFAULT_DICT_PATH_REC
         
         if self.cfg['PostProcess'].get('name') == 'GTCLabelDecode':
             self.cfg['PostProcess']['only_gtc'] = True
