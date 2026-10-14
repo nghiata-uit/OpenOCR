@@ -1,14 +1,13 @@
 Global:
   device: gpu
-  epoch_num: 10
+  epoch_num: 30
   log_smooth_window: 20
-  print_batch_step: 20
+  print_batch_step: 10
   output_dir: ./output/rec/vn/svtrv2_vn_synth/
   save_epoch_step: [5, 1]
   eval_batch_step: [0, 500]
   eval_epoch_step: [0, 1]
   cal_metric_during_train: True
-  # Tận dụng checkpoint tốt nhất hiện có để finetune tiếp
   pretrained_model: ./best.pth
   checkpoints:
   use_tensorboard: false
@@ -45,28 +44,32 @@ Architecture:
     local_k: [[5, 5], [5, 5], [-1, -1]]
     sub_k: [[1, 1], [2, 1], [-1, -1]]
     last_stage: false
+    feat2d: True
   Decoder:
-    name: GTC
-    max_text_length: *max_text_length
-    sub_str_len: &subsl 3
-    rec_num_classes: 230
-    use_space_char: *use_space_char
-    character_dict_path: *character_dict_path
-    c_dim: 384
-    refine_stage: 1
+    name: GTCDecoder
+    infer_gtc: True
+    detach: False
+    gtc_decoder:
+      name: SMTRDecoder
+      num_layer: 1
+      ds: True
+      max_len: *max_text_length
+      next_mode: &next True
+      sub_str_len: &subsl 5
+    ctc_decoder:
+      name: RCTCDecoder
 
 Loss:
-  name: Combined
-  loss_config_list:
-    - GTCLoss:
-        name: SMTRLoss
-        sub_str_len: *subsl
-    - CTCLoss:
-        use_focal_loss: False
-        weight: 0.1
+  name: GTCLoss
+  ctc_weight: 0.1
+  gtc_loss:
+    name: SMTRLoss
 
 PostProcess:
   name: GTCLabelDecode
+  gtc_label_decode:
+    name: SMTRLabelDecode
+    next_mode: *next
   character_dict_path: *character_dict_path
   use_space_char: *use_space_char
 
