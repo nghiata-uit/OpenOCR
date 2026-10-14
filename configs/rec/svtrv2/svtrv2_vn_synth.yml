@@ -4,7 +4,7 @@ Global:
   log_smooth_window: 20
   print_batch_step: 10
   output_dir: ./output/rec/vn/svtrv2_vn_synth/
-  save_epoch_step: [5, 1]
+  save_epoch_step: [20, 2]
   eval_batch_step: [0, 500]
   eval_epoch_step: [0, 1]
   cal_metric_during_train: True
@@ -26,7 +26,7 @@ Optimizer:
 
 LRScheduler:
   name: CosineAnnealingLR
-  warmup_epoch: 1
+  warmup_epoch: 2
   cycle_momentum: False
 
 Architecture:
