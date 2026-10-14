@@ -53,6 +53,18 @@ class SimpleDataSet(Dataset):
         self.need_reset = True in [x < 1 for x in ratio_list]
         self.ds_width = dataset_config.get('ds_width', False)
 
+    def _resolve_img_path(self, file_name):
+        img_path = os.path.join(self.data_dir, file_name)
+        if os.path.exists(img_path):
+            return img_path
+        if os.path.exists(file_name):
+            return file_name
+        for prefix in ["vintext_svtrv2", "synth_vn_data"]:
+            candidate = os.path.join(prefix, file_name)
+            if os.path.exists(candidate):
+                return candidate
+        return img_path
+
     def set_epoch_as_seed(self, seed, dataset_config):
         if self.mode == 'train':
             try:
@@ -120,7 +132,7 @@ class SimpleDataSet(Dataset):
             file_name = substr[0]
             file_name = self._try_parse_filename_list(file_name)
             label = substr[1]
-            img_path = os.path.join(self.data_dir, file_name)
+            img_path = self._resolve_img_path(file_name)
             data = {'img_path': img_path, 'label': label}
             if not os.path.exists(img_path):
                 continue
@@ -146,7 +158,7 @@ class SimpleDataSet(Dataset):
             file_name = substr[0]
             file_name = self._try_parse_filename_list(file_name)
             label = substr[1]
-            img_path = os.path.join(self.data_dir, file_name)
+            img_path = self._resolve_img_path(file_name)
             data = {'img_path': img_path, 'label': label}
 
             if not os.path.exists(img_path):
@@ -195,7 +207,7 @@ class MultiScaleDataSet(SimpleDataSet):
                 try:
                     from PIL import Image
                     file_name = self._try_parse_filename_list(name)
-                    img_path = os.path.join(self.data_dir, file_name)
+                    img_path = self._resolve_img_path(file_name)
                     w, h = Image.open(img_path).size
                     wh_ratio.append(float(w) / float(h))
                 except Exception as e:
@@ -257,7 +269,7 @@ class MultiScaleDataSet(SimpleDataSet):
             file_name = substr[0]
             file_name = self._try_parse_filename_list(file_name)
             label = substr[1]
-            img_path = os.path.join(self.data_dir, file_name)
+            img_path = self._resolve_img_path(file_name)
             data = {'img_path': img_path, 'label': label}
             if not os.path.exists(img_path):
                 raise Exception('{} does not exist!'.format(img_path))
