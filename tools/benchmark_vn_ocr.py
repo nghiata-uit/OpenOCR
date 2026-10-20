@@ -372,7 +372,7 @@ def evaluate_svtrv2_on_dataset(trainer, cfg_dict, data_dir, label_file, desc_nam
             start = time.time()
 
             if trainer.scaler:
-                with torch.cuda.amp.autocast(enabled=trainer.device.type == 'cuda'):
+                with torch.amp.autocast('cuda', enabled=trainer.device.type == 'cuda'):
                     preds = trainer.model(batch_tensor[0], data=batch_tensor[1:])
             else:
                 preds = trainer.model(batch_tensor[0], data=batch_tensor[1:])
@@ -382,16 +382,24 @@ def evaluate_svtrv2_on_dataset(trainer, cfg_dict, data_dir, label_file, desc_nam
             total_time += (time.time() - start)
 
             post_result = trainer.post_process_class(preds, batch_numpy)
-            # Kiểm tra xem post_result trả về dạng đơn hay tuple (gtc, ctc)
-            if isinstance(post_result, tuple) and len(post_result) == 2 and isinstance(post_result[0], tuple):
+            # GTCLabelDecode trả về list [gtc_tuple, ctc_tuple], trong đó mỗi phần tử là (preds_list, labels_list)
+            # Các bộ giải mã đơn (CTCLabelDecode / SMTRLabelDecode) trả về trực tiếp (preds_list, labels_list)
+            is_dual_gtc_ctc = (
+                isinstance(post_result, (list, tuple))
+                and len(post_result) == 2
+                and isinstance(post_result[0], (list, tuple))
+                and len(post_result[0]) == 2
+                and isinstance(post_result[0][0], list)
+            )
+            if is_dual_gtc_ctc:
                 gtc_res, ctc_res = post_result[0], post_result[1]
-                for (p_str, _), (t_str, _) in zip(gtc_res[0], gtc_res[1]):
-                    gtc_pairs.append((p_str, t_str))
-                for (p_str, _), (t_str, _) in zip(ctc_res[0], ctc_res[1]):
-                    ctc_pairs.append((p_str, t_str))
+                for p_item, t_item in zip(gtc_res[0], gtc_res[1]):
+                    gtc_pairs.append((p_item[0], t_item[0]))
+                for p_item, t_item in zip(ctc_res[0], ctc_res[1]):
+                    ctc_pairs.append((p_item[0], t_item[0]))
             else:
-                for (p_str, _), (t_str, _) in zip(post_result[0], post_result[1]):
-                    ctc_pairs.append((p_str, t_str))
+                for p_item, t_item in zip(post_result[0], post_result[1]):
+                    ctc_pairs.append((p_item[0], t_item[0]))
 
             total_frames += len(batch[0])
             pbar.update(1)

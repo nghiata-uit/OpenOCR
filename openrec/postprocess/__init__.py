@@ -56,6 +56,8 @@ class GTCLabelDecode(object):
                  only_gtc=False,
                  with_ratio=False,
                  **kwargs):
+        if gtc_label_decode is None:
+            gtc_label_decode = {'name': 'SMTRLabelDecode'}
         gtc_label_decode['character_dict_path'] = character_dict_path
         gtc_label_decode['use_space_char'] = use_space_char
         self.gtc_label_decode = build_post_process(gtc_label_decode)
