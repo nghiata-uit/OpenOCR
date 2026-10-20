@@ -124,10 +124,27 @@ def generate_random_syllable():
     word = f"{c_init}{accented_nucleus}{c_end}"
     return word
 
-def get_random_text(hard_ratio=0.6):
-    """Lấy ngẫu nhiên từ vựng tiếng Việt theo tỷ lệ ưu tiên từ khó và biển hiệu"""
+def load_custom_dict(dict_file):
+    """Nạp danh sách từ vựng/âm tiết từ file từ điển bên ngoài"""
+    words = []
+    if dict_file and os.path.exists(dict_file):
+        with open(dict_file, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                w = line.strip()
+                # Chỉ lấy các từ đơn hoặc cụm từ ngắn hợp lệ
+                if w and len(w) <= 30 and not w.startswith("#"):
+                    words.append(w)
+        words = list(set(words))
+        print(f"📖 Đã nạp thành công {len(words)} từ vựng chuẩn từ: {dict_file}")
+    return words
+
+def get_random_text(hard_ratio=0.6, custom_dict=None):
+    """Lấy ngẫu nhiên từ vựng tiếng Việt theo tỷ lệ ưu tiên từ khó, biển hiệu và từ điển chuẩn"""
     r = random.random()
-    if r < hard_ratio * 0.5:
+    if custom_dict and len(custom_dict) > 0 and r < 0.55:
+        # Nhóm từ điển tiếng Việt chuẩn
+        text = random.choice(custom_dict)
+    elif r < hard_ratio * 0.5:
         # Nhóm từ dấu kép khó
         text = random.choice(HARD_DIACRITIC_WORDS)
     elif r < hard_ratio:
@@ -398,10 +415,10 @@ def render_single_word(text, font_path, target_height=32):
 
 def worker_generate(task_args):
     """Hàm worker xử lý sinh từng ảnh cho đa luồng"""
-    sample_idx, output_img_path, fonts, hard_sample_ratio, target_h = task_args
+    sample_idx, output_img_path, fonts, hard_sample_ratio, target_h, custom_dict = task_args
     for _ in range(6):
         try:
-            text = get_random_text(hard_ratio=hard_sample_ratio)
+            text = get_random_text(hard_ratio=hard_sample_ratio, custom_dict=custom_dict)
             chosen_font = random.choice(fonts)
             img = render_single_word(text, chosen_font, target_height=target_h)
             if img is not None:
@@ -414,10 +431,13 @@ def worker_generate(task_args):
     return None, None
 
 
-def generate_dataset(output_dir, num_samples, val_ratio, font_dir, hard_sample_ratio, target_h, workers):
+def generate_dataset(output_dir, num_samples, val_ratio, font_dir, hard_sample_ratio, target_h, workers, dict_file=None):
     os.makedirs(output_dir, exist_ok=True)
     images_dir = os.path.join(output_dir, "images")
     os.makedirs(images_dir, exist_ok=True)
+
+    # 1. Nạp từ điển tùy chỉnh nếu có
+    custom_dict = load_custom_dict(dict_file)
 
     print(f"🔍 Đang tìm kiếm font chữ tiếng Việt...")
     fonts = scan_system_fonts(font_dir)
@@ -431,7 +451,7 @@ def generate_dataset(output_dir, num_samples, val_ratio, font_dir, hard_sample_r
     for i in range(num_samples):
         img_name = f"word_{i:06d}.jpg"
         img_path = os.path.join(images_dir, img_name)
-        tasks.append((i, img_path, fonts, hard_sample_ratio, target_h))
+        tasks.append((i, img_path, fonts, hard_sample_ratio, target_h, custom_dict))
 
     results = []
     with ProcessPoolExecutor(max_workers=workers) as executor:
@@ -473,6 +493,7 @@ def main():
     parser.add_argument("--output_dir", type=str, default="./synth_vn_data", help="Thư mục xuất dữ liệu")
     parser.add_argument("--num_samples", type=int, default=10000, help="Số lượng mẫu cần sinh")
     parser.add_argument("--val_ratio", type=float, default=0.1, help="Tỷ lệ tập validation")
+    parser.add_argument("--dict_file", type=str, default=None, help="Đường dẫn file từ điển từ vựng/âm tiết tiếng Việt")
     parser.add_argument("--font_dir", type=str, default="./fonts", help="Thư mục font tùy chỉnh")
     parser.add_argument("--hard_sample_ratio", type=float, default=0.65, help="Tỷ lệ ưu tiên từ dấu kép & biển hiệu")
     parser.add_argument("--img_height", type=int, default=32, help="Chiều cao ảnh chuẩn hóa (mặc định 32px)")
@@ -483,6 +504,7 @@ def main():
         output_dir=args.output_dir,
         num_samples=args.num_samples,
         val_ratio=args.val_ratio,
+        dict_file=args.dict_file,
         font_dir=args.font_dir,
         hard_sample_ratio=args.hard_sample_ratio,
         target_h=args.img_height,

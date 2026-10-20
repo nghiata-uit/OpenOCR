@@ -1,4 +1,5 @@
 import string
+import unicodedata
 import numpy as np
 from rapidfuzz.distance import Levenshtein
 
@@ -52,9 +53,8 @@ class RecMetric(object):
         self.reset()
 
     def _normalize_text(self, text):
-        text = ''.join(
-            filter(lambda x: x in (string.digits + string.ascii_letters),
-                   text))
+        text = unicodedata.normalize('NFC', text)
+        text = ''.join(filter(lambda x: x.isalnum(), text))
         return text
 
     def __call__(self,
